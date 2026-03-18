@@ -1,39 +1,30 @@
 {
-  "flutter": {
-    "platforms": {
-      "android": {
-        "default": {
-          "projectId": "ai-food-calorie-a0085",
-          "appId": "1:1005167792462:android:24ba9fad2fdea37c46ce1f",
-          "fileOutput": "android/app/google-services.json"
-        }
-      },
-      "dart": {
-        "lib/firebase_options.dart": {
-          "projectId": "ai-food-calorie-a0085",
-          "configurations": {
-            "android": "1:1005167792462:android:24ba9fad2fdea37c46ce1f",
-            "ios": "1:1005167792462:ios:7810a82700e7609a46ce1f",
-            "macos": "1:1005167792462:ios:7810a82700e7609a46ce1f",
-            "web": "1:1005167792462:web:1ef6b280c9d336a946ce1f",
-            "windows": "1:1005167792462:web:7d75ea7bc753f35346ce1f"
-          }
-        }
-      }
+    "flutter":  {
+                    "platforms":  {
+                                      "android":  {
+                                                      "default":  {
+                                                                      "projectId":  "ai-food-calorie-a0085",
+                                                                      "appId":  "1:1005167792462:android:24ba9fad2fdea37c46ce1f",
+                                                                      "fileOutput":  "android/app/google-services.json"
+                                                                  }
+                                                  },
+                                      "dart":  {
+                                                   "lib/firebase_options.dart":  {
+                                                                                     "projectId":  "ai-food-calorie-a0085",
+                                                                                     "configurations":  {
+                                                                                                            "android":  "1:1005167792462:android:24ba9fad2fdea37c46ce1f",
+                                                                                                            "ios":  "1:1005167792462:ios:7810a82700e7609a46ce1f",
+                                                                                                            "macos":  "1:1005167792462:ios:7810a82700e7609a46ce1f",
+                                                                                                            "web":  "1:1005167792462:web:1ef6b280c9d336a946ce1f",
+                                                                                                            "windows":  "1:1005167792462:web:7d75ea7bc753f35346ce1f"
+                                                                                                        }
+                                                                                 }
+                                               }
+                                  }
+                },
+    "hosting": {
+      "public": "build/web",
+      "ignore": ["firebase.json","**/.*","**/node_modules/**"],
+      "rewrites": [{"source":"**","destination":"/index.html"}]
     }
-  },
-  "hosting": {
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
 }
