@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1005167792462",
+    "project_id": "ai-food-calorie-a0085",
+    "storage_bucket": "ai-food-calorie-a0085.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1005167792462:android:24ba9fad2fdea37c46ce1f",
+        "android_client_info": {
+          "package_name": "com.example.ai_food_calorie"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiji0ldLjrFcM_ollGbifSTCferZMnufE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

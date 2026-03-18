@@ -1,0 +1,13 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/cmake_install.cmake",
+		"C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/flutter/cmake_install.cmake",
+		"C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/runner/cmake_install.cmake",
+		"C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/plugins/file_selector_windows/cmake_install.cmake",
+		"C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/plugins/firebase_auth/cmake_install.cmake",
+		"C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/plugins/firebase_core/cmake_install.cmake",
+		"C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/plugins/firebase_core/bin/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

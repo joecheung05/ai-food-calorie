@@ -1,0 +1,146 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 75,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 78,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 81,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 85,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 92,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 99,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 102,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Runtime",
+			"destination" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/install/x64-Debug",
+			"paths" : 
+			[
+				"runner/ai_food_calorie.exe"
+			],
+			"targetId" : "ai_food_calorie::@056c4f61b0156d1d9b06",
+			"targetIndex" : 0,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Runtime",
+			"destination" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/install/x64-Debug/data",
+			"paths" : 
+			[
+				"flutter/ephemeral/icudtl.dat"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Runtime",
+			"destination" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/install/x64-Debug",
+			"paths" : 
+			[
+				"flutter/ephemeral/flutter_windows.dll"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Runtime",
+			"destination" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/install/x64-Debug",
+			"paths" : 
+			[
+				"out/build/x64-Debug/plugins/file_selector_windows/file_selector_windows_plugin.dll",
+				"out/build/x64-Debug/plugins/firebase_auth/firebase_auth_plugin.lib",
+				"out/build/x64-Debug/plugins/firebase_core/firebase_core_plugin.lib"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 5,
+			"component" : "Runtime",
+			"destination" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/install/x64-Debug",
+			"paths" : 
+			[
+				{
+					"from" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/build/native_assets/windows",
+					"to" : "."
+				}
+			],
+			"type" : "directory"
+		},
+		{
+			"backtrace" : 6,
+			"component" : "Runtime",
+			"type" : "code"
+		},
+		{
+			"backtrace" : 7,
+			"component" : "Runtime",
+			"destination" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/install/x64-Debug/data",
+			"paths" : 
+			[
+				"C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/build//flutter_assets"
+			],
+			"type" : "directory"
+		}
+	],
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	}
+}

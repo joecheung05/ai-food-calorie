@@ -1,0 +1,56 @@
+{
+	"abstract" : true,
+	"artifacts" : 
+	[
+		{
+			"path" : "extracted/firebase_cpp_sdk_windows/libs/windows/VS2019/MD/x64/Debug/firebase_ump.lib"
+		}
+	],
+	"backtrace" : 2,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"add_firebase_target"
+		],
+		"files" : 
+		[
+			"out/build/x64-Debug/extracted/firebase_cpp_sdk_windows/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 104,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 77,
+				"parent" : 1
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "firebase_ump::@101e919f5f0748a81ff6",
+	"imported" : true,
+	"name" : "firebase_ump",
+	"nameOnDisk" : "firebase_ump.lib",
+	"paths" : 
+	{
+		"build" : "plugins/firebase_core/bin",
+		"source" : "out/build/x64-Debug/extracted/firebase_cpp_sdk_windows"
+	},
+	"sources" : [],
+	"type" : "STATIC_LIBRARY"
+}

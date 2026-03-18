@@ -1,0 +1,397 @@
+{
+	"archive" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "/machine:x64",
+				"role" : "flags"
+			}
+		]
+	},
+	"artifacts" : 
+	[
+		{
+			"path" : "plugins/firebase_auth/firebase_auth_plugin.lib"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"add_dependencies",
+			"target_link_libraries",
+			"target_compile_options",
+			"apply_standard_settings",
+			"target_compile_definitions",
+			"add_definitions",
+			"include_directories",
+			"target_compile_features"
+		],
+		"files" : 
+		[
+			"flutter/ephemeral/.plugin_symlinks/firebase_auth/windows/CMakeLists.txt",
+			"flutter/CMakeLists.txt",
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 43,
+				"parent" : 0
+			},
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 40,
+				"parent" : 2
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 68,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 72,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 53,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 42,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 43,
+				"parent" : 6
+			},
+			{
+				"command" : 5,
+				"file" : 0,
+				"line" : 60,
+				"parent" : 0
+			},
+			{
+				"command" : 5,
+				"file" : 0,
+				"line" : 62,
+				"parent" : 0
+			},
+			{
+				"file" : 2
+			},
+			{
+				"command" : 6,
+				"file" : 2,
+				"line" : 33,
+				"parent" : 11
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 45,
+				"parent" : 6
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 44,
+				"parent" : 6
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 39,
+				"parent" : 0
+			},
+			{
+				"command" : 8,
+				"file" : 2,
+				"line" : 41,
+				"parent" : 6
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"compileDependencies" : 
+	[
+		{
+			"backtrace" : 4,
+			"id" : "firebase_core_plugin::@8918e374103d0b1befce"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "firebase_auth::@101e919f5f0748a81ff6"
+		},
+		{
+			"backtrace" : 5,
+			"id" : "flutter::@2bb09fbb03a373b2cb34"
+		},
+		{
+			"backtrace" : 5,
+			"id" : "flutter_wrapper_plugin::@2bb09fbb03a373b2cb34"
+		}
+	],
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "/DWIN32 /D_WINDOWS /W3 /GR /EHsc /MDd /Zi /Ob0 /Od /RTC1 -std:c++17"
+				},
+				{
+					"backtrace" : 7,
+					"fragment" : "/W4"
+				},
+				{
+					"backtrace" : 7,
+					"fragment" : "/WX"
+				},
+				{
+					"backtrace" : 7,
+					"fragment" : "/wd\\\"4100\\\""
+				},
+				{
+					"backtrace" : 8,
+					"fragment" : "/EHsc"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 9,
+					"define" : "FLUTTER_PLUGIN_IMPL"
+				},
+				{
+					"backtrace" : 10,
+					"define" : "INTERNAL_EXPERIMENTAL=1"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "UNICODE"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "_DEBUG"
+				},
+				{
+					"backtrace" : 14,
+					"define" : "_HAS_EXCEPTIONS=0"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "_UNICODE"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 15,
+					"path" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/generated"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/flutter/ephemeral/.plugin_symlinks/firebase_core/windows/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/flutter/ephemeral"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/flutter/ephemeral/cpp_client_wrapper/include"
+				},
+				{
+					"backtrace" : 4,
+					"isSystem" : true,
+					"path" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug/extracted/firebase_cpp_sdk_windows/include"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					16
+				],
+				"standard" : "17"
+			},
+			"sourceIndexes" : 
+			[
+				1,
+				2,
+				4
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "flutter_assemble::@2bb09fbb03a373b2cb34"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "flutter_wrapper_plugin::@2bb09fbb03a373b2cb34"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "firebase_core_plugin::@8918e374103d0b1befce"
+		}
+	],
+	"id" : "firebase_auth_plugin::@94a4f965bf50da898e31",
+	"interfaceCompileDependencies" : 
+	[
+		{
+			"backtrace" : 4,
+			"id" : "firebase_core_plugin::@8918e374103d0b1befce"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "firebase_auth::@101e919f5f0748a81ff6"
+		},
+		{
+			"backtrace" : 5,
+			"id" : "flutter::@2bb09fbb03a373b2cb34"
+		},
+		{
+			"backtrace" : 5,
+			"id" : "flutter_wrapper_plugin::@2bb09fbb03a373b2cb34"
+		}
+	],
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 4,
+			"id" : "firebase_core_plugin::@8918e374103d0b1befce"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "firebase_auth::@101e919f5f0748a81ff6"
+		},
+		{
+			"backtrace" : 5,
+			"id" : "flutter::@2bb09fbb03a373b2cb34"
+		},
+		{
+			"backtrace" : 5,
+			"id" : "flutter_wrapper_plugin::@2bb09fbb03a373b2cb34"
+		}
+	],
+	"linkLibraries" : 
+	[
+		{
+			"backtrace" : 4,
+			"id" : "firebase_core_plugin::@8918e374103d0b1befce"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "firebase_auth::@101e919f5f0748a81ff6"
+		},
+		{
+			"backtrace" : 5,
+			"id" : "flutter::@2bb09fbb03a373b2cb34"
+		},
+		{
+			"backtrace" : 5,
+			"id" : "flutter_wrapper_plugin::@2bb09fbb03a373b2cb34"
+		}
+	],
+	"name" : "firebase_auth_plugin",
+	"nameOnDisk" : "firebase_auth_plugin.lib",
+	"paths" : 
+	{
+		"build" : "plugins/firebase_auth",
+		"source" : "flutter/ephemeral/.plugin_symlinks/firebase_auth/windows"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				0,
+				3,
+				5,
+				6
+			]
+		},
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				1,
+				2,
+				4
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"path" : "flutter/ephemeral/.plugin_symlinks/firebase_auth/windows/include/firebase_auth/firebase_auth_plugin_c_api.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "flutter/ephemeral/.plugin_symlinks/firebase_auth/windows/firebase_auth_plugin_c_api.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "flutter/ephemeral/.plugin_symlinks/firebase_auth/windows/firebase_auth_plugin.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "flutter/ephemeral/.plugin_symlinks/firebase_auth/windows/firebase_auth_plugin.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "flutter/ephemeral/.plugin_symlinks/firebase_auth/windows/messages.g.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "flutter/ephemeral/.plugin_symlinks/firebase_auth/windows/messages.g.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "out/build/x64-Debug/generated/firebase_auth/plugin_version.h",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "STATIC_LIBRARY"
+}

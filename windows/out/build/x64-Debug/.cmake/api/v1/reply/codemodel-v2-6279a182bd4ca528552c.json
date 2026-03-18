@@ -1,0 +1,408 @@
+{
+	"configurations" : 
+	[
+		{
+			"abstractTargets" : 
+			[
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_analytics::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_analytics-Debug-2a21c3083b57be62c96b.json",
+					"name" : "firebase_analytics",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_app::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_app-Debug-810cd567a4f0d173cee3.json",
+					"name" : "firebase_app",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_app_check::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_app_check-Debug-f65bd25f483da36addf0.json",
+					"name" : "firebase_app_check",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_auth::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_auth-Debug-dd0d3af006c2e93e0619.json",
+					"name" : "firebase_auth",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_database::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_database-Debug-d76a97e46fd9211613b4.json",
+					"name" : "firebase_database",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_firestore::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_firestore-Debug-a8bc705f239e290fba27.json",
+					"name" : "firebase_firestore",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_functions::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_functions-Debug-657f4f6e1f0509fc4131.json",
+					"name" : "firebase_functions",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_installations::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_installations-Debug-3660db024bd35dfdbd73.json",
+					"name" : "firebase_installations",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_messaging::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_messaging-Debug-ef3cd607f67cf5caf70d.json",
+					"name" : "firebase_messaging",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_performance::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_performance-Debug-28fbd429bf2442ce8514.json",
+					"name" : "firebase_performance",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_remote_config::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_remote_config-Debug-e46b34b5c41eccbb5012.json",
+					"name" : "firebase_remote_config",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_storage::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_storage-Debug-b1e0b1c32311f9125429.json",
+					"name" : "firebase_storage",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_testlab::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_testlab-Debug-54b85ee039e1b9b0c49a.json",
+					"name" : "firebase_testlab",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "firebase_ump::@101e919f5f0748a81ff6",
+					"jsonFile" : "target-firebase_ump-Debug-5ed19b0112de94730ac0.json",
+					"name" : "firebase_ump",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "flutter::@2bb09fbb03a373b2cb34",
+					"jsonFile" : "target-flutter-Debug-1a6622a204e1340fef2f.json",
+					"name" : "flutter",
+					"projectIndex" : 0
+				}
+			],
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4,
+						5
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-7697358b8a7f7a666dd8.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"projectIndex" : 0,
+					"source" : "."
+				},
+				{
+					"abstractTargetIndexes" : 
+					[
+						14
+					],
+					"build" : "flutter",
+					"jsonFile" : "directory-flutter-Debug-205896370f9d68e3c207.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.14"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "flutter",
+					"targetIndexes" : 
+					[
+						4,
+						5,
+						6
+					]
+				},
+				{
+					"build" : "runner",
+					"jsonFile" : "directory-runner-Debug-81b587848c35c526aff6.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.14"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "runner",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "plugins/file_selector_windows",
+					"jsonFile" : "directory-plugins.file_selector_windows-Debug-207776454620defef217.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.14"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "flutter/ephemeral/.plugin_symlinks/file_selector_windows/windows",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "plugins/firebase_auth",
+					"jsonFile" : "directory-plugins.firebase_auth-Debug-3b4e3e5c8467c8f6b3cc.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.14"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 3,
+					"source" : "flutter/ephemeral/.plugin_symlinks/firebase_auth/windows",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "plugins/firebase_core",
+					"childIndexes" : 
+					[
+						6
+					],
+					"jsonFile" : "directory-plugins.firebase_core-Debug-99e4dcccb466b1f2cfd9.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.14"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 4,
+					"source" : "flutter/ephemeral/.plugin_symlinks/firebase_core/windows",
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"abstractTargetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13
+					],
+					"build" : "plugins/firebase_core/bin",
+					"jsonFile" : "directory-plugins.firebase_core.bin-Debug-2914fd791805468043ee.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.10"
+					},
+					"parentIndex" : 5,
+					"projectIndex" : 4,
+					"source" : "out/build/x64-Debug/extracted/firebase_cpp_sdk_windows"
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"abstractTargetIndexes" : 
+					[
+						14
+					],
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4
+					],
+					"directoryIndexes" : 
+					[
+						0,
+						1
+					],
+					"name" : "ai_food_calorie",
+					"targetIndexes" : 
+					[
+						4,
+						5,
+						6
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						2
+					],
+					"name" : "runner",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						3
+					],
+					"name" : "file_selector_windows",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						4
+					],
+					"name" : "firebase_auth",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"abstractTargetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13
+					],
+					"directoryIndexes" : 
+					[
+						5,
+						6
+					],
+					"name" : "firebase_core",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 2,
+					"id" : "ai_food_calorie::@056c4f61b0156d1d9b06",
+					"jsonFile" : "target-ai_food_calorie-Debug-8d2e268d54251b047e64.json",
+					"name" : "ai_food_calorie",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "file_selector_windows_plugin::@24329985f05541c6c489",
+					"jsonFile" : "target-file_selector_windows_plugin-Debug-eff92961fe318c6479f4.json",
+					"name" : "file_selector_windows_plugin",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "firebase_auth_plugin::@94a4f965bf50da898e31",
+					"jsonFile" : "target-firebase_auth_plugin-Debug-8ae398a374ea49e75925.json",
+					"name" : "firebase_auth_plugin",
+					"projectIndex" : 3
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "firebase_core_plugin::@8918e374103d0b1befce",
+					"jsonFile" : "target-firebase_core_plugin-Debug-7b21229559d2bf1c5f4b.json",
+					"name" : "firebase_core_plugin",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "flutter_assemble::@2bb09fbb03a373b2cb34",
+					"jsonFile" : "target-flutter_assemble-Debug-276147ae1df3cae07188.json",
+					"name" : "flutter_assemble",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "flutter_wrapper_app::@2bb09fbb03a373b2cb34",
+					"jsonFile" : "target-flutter_wrapper_app-Debug-b850ff024671046722d2.json",
+					"name" : "flutter_wrapper_app",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "flutter_wrapper_plugin::@2bb09fbb03a373b2cb34",
+					"jsonFile" : "target-flutter_wrapper_plugin-Debug-557bfc1166ff2187aefd.json",
+					"name" : "flutter_wrapper_plugin",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows/out/build/x64-Debug",
+		"source" : "C:/Users/joe_c/OneDrive/\u684c\u9762/ai_food_calorie/windows"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	}
+}
