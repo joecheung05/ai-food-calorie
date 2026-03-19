@@ -9,7 +9,7 @@ class GeminiService {
     // 使用 Google AI 後端（免費 Gemini 模型）
     final googleAI = FirebaseAI.googleAI();  // 或 FirebaseAI.vertexAI() 如果你用 Vertex
     model = googleAI.generativeModel(
-      model: 'gemini-2.5-flash',  // 或 'gemini-3.1-flash' 如果可用 
+      model: 'gemini-3.1-flash-lite-preview',  // 或 'gemini-3.1-flash' 如果可用 
       // 可加 safetySettings 等
     );
   }
