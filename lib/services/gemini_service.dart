@@ -9,27 +9,40 @@ class GeminiService {
     // 使用 Google AI 後端（免費 Gemini 模型）
     final googleAI = FirebaseAI.googleAI();  // 或 FirebaseAI.vertexAI() 如果你用 Vertex
     model = googleAI.generativeModel(
-      model: 'gemini-2.5-flash',  // 或 'gemini-3.1-flash' 如果可用
+      model: 'gemini-2.5-flash',  // 或 'gemini-3.1-flash' 如果可用 
       // 可加 safetySettings 等
     );
   }
 
   Future<Map<String, dynamic>> analyzeFoodImage(Uint8List imageBytes) async {
-    const promptText = '''
-這是一張餐點照片。
-請盡可能精確辨識所有食物項目、估計每項的份量（克數或大約大小），然後計算總熱量、蛋白質、碳水化合物、脂肪。
-用以下JSON格式回覆（不要多餘文字）：
-{
-  "foods": [
-    {"name": "食物名稱", "grams": 150, "cal": 450, "protein": 35, "carbs": 40, "fat": 15}
-  ],
-  "total_cal": 1200,
-  "total_protein": 68,
-  "total_carbs": 150,
-  "total_fat": 45
-}
-使用常見營養資料庫標準（USDA或香港食物資料）。如果有港式菜請盡量準確。
-''';
+    String promptText = '''
+      這是一張餐點照片，使用常見營養資料庫標準（USDA 或 香港食物安全中心資料）。請盡可能精確辨識所有食物項目、估計每項的份量（克數或大約大小），然後計算總熱量、蛋白質、碳水化合物、脂肪。  如果有港式/中式菜餚，請盡量使用亞洲食物資料庫的近似值。
+
+      步驟：
+      1. 辨識所有可見食物（主菜、配菜、湯、醬汁）。
+      2. 估計實際重量（克數），參考常見餐盤大小。
+      3. 列出菜式名稱並計算熱量、蛋白質、碳水、脂肪。
+      4. 回覆必須是純 JSON，不要任何額外文字、解釋或 markdown。
+
+      輸出格式（嚴格遵守）：
+      {
+        "foods": [
+          {
+            "name": "食物名稱",
+            "estimated_grams": 280,
+            "calories": 680,
+            "protein_g": 38,
+            "carbs_g": 85,
+            "fat_g": 22
+          }
+        ],
+        "dish_name" : "食物名稱",
+        "total_calories": 725,
+        "total_protein_g": 41,
+        "total_carbs_g": 93,
+        "total_fat_g": 23
+      }
+      ''';
 
     // 新版多模態內容建構（用 Content.multi + TextPart + InlineDataPart）
     final content = Content.multi([
@@ -37,13 +50,22 @@ class GeminiService {
       InlineDataPart('image/jpeg', imageBytes),  // MIME type 根據圖片格式（jpeg/png）
     ]);
 
-    final response = await model.generateContent([content]);  // 傳 List<Content>
+    late final String text;
 
-    final text = response.text ?? '{}';
+    try {
+      final response = await model.generateContent([content]);  // 傳 List<Content>
+      text = response.text ?? '{}';
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('resource_exhausted') || msg.contains('quota') || msg.contains('429')) {
+        throw Exception('已達免費額度，請稍後重試或升級配額。');
+      }
+      rethrow;
+    }
 
     // 清理可能的 ```json 包圍
     final jsonStr = text.replaceAll(RegExp(r'^```json\s*|\s*```$'), '').trim();
-    
+
     try {
       return jsonDecode(jsonStr);
     } catch (e) {

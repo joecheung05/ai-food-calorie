@@ -55,9 +55,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final data = await _gemini.analyzeFoodImage(bytes);
       setState(() => _result = data);
     } catch (e) {
-      debugPrint('錯誤: $e');
+      final errorMsg = e.toString();
+      debugPrint('錯誤: $errorMsg');
+      final displayMsg = errorMsg.contains('已達免費額度')
+          ? '已達免費額度，請稍後重試或升級配額。'
+          : '分析圖片時發生錯誤';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('分析圖片時發生錯誤')),
+        SnackBar(content: Text(displayMsg)),
       );
     } finally {
       setState(() => _loading = false);
@@ -93,6 +97,49 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         ],
       ),
+    );
+  }
+
+  Widget _buildIngredientSection() {
+    final foods = (_result?['foods'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+    if (foods.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('食材明細', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        ...foods.map((food) {
+          final name = food['name'] ?? '-';
+          final grams = food['estimated_grams'] != null ? '${food['estimated_grams']} g' : '-';
+          final cal = food['calories'] != null ? '${food['calories']} kcal' : '-';
+          final protein = food['protein_g'] != null ? '${food['protein_g']} g' : '-';
+          final carbs = food['carbs_g'] != null ? '${food['carbs_g']} g' : '-';
+          final fat = food['fat_g'] != null ? '${food['fat_g']} g' : '-';
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildResultRow('• $name', grams),
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildResultRow('卡路里', cal),
+                    _buildResultRow('蛋白質', protein),
+                    _buildResultRow('碳水化合物', carbs),
+                    _buildResultRow('脂肪', fat),
+                  ],
+                ),
+              ),
+              const Divider(height: 20, thickness: 0.5),
+            ],
+          );
+        }).toList(),
+      ],
     );
   }
 
@@ -150,12 +197,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('結果', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                        Text('${_result!['dish_name'] ?? '-'}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
                         const Divider(height: 20, thickness: 1),
-                        _buildResultRow('卡路里', '${_result!['total_cal'] ?? '-'} kcal'),
-                        _buildResultRow('蛋白質', '${_result!['total_protein'] ?? '-'} g'),
-                        _buildResultRow('碳水化合物', '${_result!['total_carbs'] ?? '-'} g'),
-                        _buildResultRow('脂肪', '${_result!['total_fat'] ?? '-'} g'),
+                        _buildIngredientSection(),
+                        if ((_result!['foods'] as List<dynamic>?)?.isNotEmpty ?? false) const Divider(height: 20, thickness: 1),
+                        _buildResultRow('總卡路里', '${_result!['total_calories'] ?? _result!['total_cal'] ?? '-'} kcal'),
+                        _buildResultRow('總蛋白質', '${_result!['total_protein_g'] ?? _result!['total_protein'] ?? '-'} g'),
+                        _buildResultRow('總碳水化合物', '${_result!['total_carbs_g'] ?? _result!['total_carbs'] ?? '-'} g'),
+                        _buildResultRow('總脂肪', '${_result!['total_fat_g'] ?? _result!['total_fat'] ?? '-'} g'),
                       ],
                     ),
                   ),
@@ -164,9 +213,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 20),
               const Text(
-                'AI 食物營養分析\n\n',
+                'By Joe\n\n',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54),
+                style: TextStyle(color: Colors.grey, fontSize: 14, fontStyle: FontStyle.italic),
               ),
             ],
           ),
