@@ -21,13 +21,17 @@ class FoodRecordAdapter extends TypeAdapter<FoodRecord> {
       totalCal: fields[1] as double,
       dateTime: fields[2] as DateTime,
       rawJson: (fields[3] as Map).cast<String, dynamic>(),
+      protein: fields[4] as double,
+      fat: fields[5] as double,
+      carbs: fields[6] as double,
+      imageUrl: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, FoodRecord obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.dishName)
       ..writeByte(1)
@@ -35,7 +39,15 @@ class FoodRecordAdapter extends TypeAdapter<FoodRecord> {
       ..writeByte(2)
       ..write(obj.dateTime)
       ..writeByte(3)
-      ..write(obj.rawJson);
+      ..write(obj.rawJson)
+      ..writeByte(4)
+      ..write(obj.protein)
+      ..writeByte(5)
+      ..write(obj.fat)
+      ..writeByte(6)
+      ..write(obj.carbs)
+      ..writeByte(7)
+      ..write(obj.imageUrl);
   }
 
   @override

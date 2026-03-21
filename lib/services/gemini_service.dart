@@ -14,6 +14,38 @@ class GeminiService {
     );
   }
 
+  Future<Map<String, dynamic>> reanalyzeFoodByText(String foodDescription) async {
+  try {
+    // 這裡使用與圖片分析相同的 prompt 結構，但改為純文字輸入
+    final prompt = """
+    使用者修正了食材描述為：「$foodDescription」。
+    請根據這個描述，重新估算營養成分。
+    請嚴格回傳 JSON 格式，包含：
+    {
+      "dish_name": "食物名稱",
+      "total_calories": 數字,
+      "total_protein_g": 數字,
+      "total_carbs_g": 數字,
+      "total_fat_g": 數字,
+      "foods": [{"name": "食材", "estimated_grams": 數字, "calories": 數字, "protein_g": 數字, "carbs_g": 數字, "fat_g": 數字}]
+    }
+    """;
+
+    // 呼叫你的 GoogleGenerativeAI model (假設你已經在 service 初始化了 model)
+    final content = [Content.text(prompt)];
+    final response = await model.generateContent(content);
+    
+    final text = response.text;
+    if (text == null) throw Exception("AI 回傳內容為空");
+
+    // 移除 markdown 標籤並解析 JSON
+    final jsonString = text.replaceAll('```json', '').replaceAll('```', '').trim();
+    return jsonDecode(jsonString);
+  } catch (e) {
+    throw Exception("文字分析失敗: $e");
+  }
+}
+
   Future<Map<String, dynamic>> analyzeFoodImage(Uint8List imageBytes) async {
     String promptText = '''
       這是一張餐點照片，使用常見營養資料庫標準（USDA 或 香港食物安全中心資料）。請盡可能精確辨識所有食物項目、估計每項的份量（克數或大約大小），然後計算總熱量、蛋白質、碳水化合物、脂肪。  如果有港式/中式菜餚，請盡量使用亞洲食物資料庫的近似值。

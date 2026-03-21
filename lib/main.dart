@@ -1,15 +1,20 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert'; // 必須加入這一行才能使用 base64Encode
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/services.dart';
 
 import 'services/gemini_service.dart';
 import 'firebase_options.dart';
+
 
 import 'models/food_record.dart';
 
@@ -57,13 +62,54 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading = false;
   File? _image;
   Uint8List? _imageData;
+  Uint8List? manualImageData;
   double _tdee = 0;
+  String _goal = 'maintain'; // 'lose', 'maintain', 'gain'
+  double _targetProtein = 0;
+  double _targetCarbs = 0;
+  double _targetFat = 0;
+  double _targetCalories = 0;
 // 控制項
 final TextEditingController _ageController = TextEditingController();
 final TextEditingController _weightController = TextEditingController();
 final TextEditingController _heightController = TextEditingController();
 String _gender = 'male';
 double _activityLevel = 1.2; // 預設久坐
+
+void _calculateNutrientGoals() {
+  _calculateTDEE(); // 先計算基礎 TDEE
+  
+  if (_tdee <= 0) return;
+
+  setState(() {
+    // 1. 根據目標調整總熱量目標
+    if (_goal == 'lose') {
+      _targetCalories = _tdee - 400; // 減脂：減少 400 kcal
+    } else if (_goal == 'gain') {
+      _targetCalories = _tdee + 400; // 增肌：增加 400 kcal
+    } else {
+      _targetCalories = _tdee;       // 維持
+    }
+
+    // 2. 根據目標分配營養素比例 (Protein/Carbs/Fat)
+    if (_goal == 'lose') {
+      // 減脂：35% P, 35% C, 30% F (高蛋白保肌)
+      _targetProtein = (_targetCalories * 0.35) / 4;
+      _targetCarbs = (_targetCalories * 0.35) / 4;
+      _targetFat = (_targetCalories * 0.30) / 9;
+    } else if (_goal == 'gain') {
+      // 增肌：25% P, 50% C, 25% F (高碳水提供能量)
+      _targetProtein = (_targetCalories * 0.25) / 4;
+      _targetCarbs = (_targetCalories * 0.50) / 4;
+      _targetFat = (_targetCalories * 0.25) / 9;
+    } else {
+      // 維持：25% P, 45% C, 30% F
+      _targetProtein = (_targetCalories * 0.25) / 4;
+      _targetCarbs = (_targetCalories * 0.45) / 4;
+      _targetFat = (_targetCalories * 0.30) / 9;
+    }
+  });
+}
 
 @override
 void initState() {
@@ -80,7 +126,10 @@ Future<void> _loadProfile() async {
     _heightController.text = prefs.getString('height') ?? '';
     _gender = prefs.getString('gender') ?? 'male';
     _activityLevel = prefs.getDouble('activity') ?? 1.2;
+    _goal = prefs.getString('goal') ?? 'maintain'; // 記得載入目標
+    
     _calculateTDEE();
+    _calculateNutrientGoals(); // 關鍵：初始化時也要計算目標比例
   });
 }
 
@@ -109,12 +158,15 @@ Future<void> _saveProfile() async {
   await prefs.setString('height', _heightController.text);
   await prefs.setString('gender', _gender);
   await prefs.setDouble('activity', _activityLevel);
-  _calculateTDEE();
+  await prefs.setString('goal', _goal); // 儲存目標
+  
+  _calculateNutrientGoals();
   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('資料已儲存')));
 }
 
   Future<void> _analyzeImageFromBytes(Uint8List bytes) async {
   setState(() => _loading = true);
+  debugPrint("--- 開始 AI 辨識流程 ---");
 
   
   try {
@@ -128,14 +180,32 @@ Future<void> _saveProfile() async {
       totalCal: (data['total_cal'] ?? data['total_calories'] ?? 0).toDouble(),
       dateTime: DateTime.now(),
       rawJson: data,
+      protein: (data['total_protein'] ?? data['total_protein_g'] ?? 0).toDouble(),
+      fat: (data['total_fat'] ?? data['total_fat_g'] ?? 0).toDouble(),
+      carbs: (data['total_carbs'] ?? data['total_carbs_g'] ?? 0).toDouble(),
+      imageUrl: null, // 目前沒有圖片 URL，等未來有雲端儲存後再更新
     );
     await box.add(newRecord); 
-    // --------------------
+    debugPrint("✅ 本地 Hive 儲存成功");
+
+    await _uploadToPublicCloud(newRecord, null).timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => debugPrint("⚠️ 雲端同步超時，略過上傳以恢復 UI"),
+    );
+    debugPrint("✅ 雲端同步流程結束");
 
   } catch (e) {
-    // ... existing error handling
+    debugPrint("❌ 辨識或儲存發生錯誤: $e");
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('辨識失敗: $e')),
+      );
+    }
   } finally {
-    setState(() => _loading = false);
+    if (mounted) {
+      setState(() => _loading = false);
+      debugPrint("--- 流程結束，已解除 Loading ---");
+    }
   }
 }
 
@@ -170,18 +240,19 @@ Map<String, List<FoodRecord>> _groupRecordsByDate(List<FoodRecord> records) {
     }
   }
 
-  Widget _buildResultRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
+  Widget _buildResultRow(String label, dynamic value) {
+  // 如果傳進來的 value 是 'null kcal' 或 '0 kcal'，嘗試從 _result 抓取不同的 key
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey)),
+        Text(value.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
+    ),
+  );
+}
 
   Widget _buildIngredientSection() {
     final foods = (_result?['foods'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
@@ -230,49 +301,48 @@ Map<String, List<FoodRecord>> _groupRecordsByDate(List<FoodRecord> records) {
   return ValueListenableBuilder(
     valueListenable: Hive.box<FoodRecord>('food_history').listenable(),
     builder: (context, Box<FoodRecord> box, _) {
+      // 取得所有紀錄並按日期分組
       final allRecords = box.values.toList().reversed.toList();
       final groupedRecords = _groupRecordsByDate(allRecords);
       final dates = groupedRecords.keys.toList();
-
-      if (allRecords.isEmpty) {
-        return const Center(child: Text("暫無歷史紀錄", style: TextStyle(color: Colors.grey)));
-      }
-
-
-      double todayConsumed = 0;
       final todayStr = _getTodayDate();
+
+      double todayCal = 0, todayP = 0, todayC = 0, todayF = 0;
+
+      // ⭐ 優化點 1：直接從 FoodRecord 屬性讀取數據，不再解析 rawJson
       if (groupedRecords.containsKey(todayStr)) {
         for (var r in groupedRecords[todayStr]!) {
-          // 這裡使用兼容性讀取 Key，防止顯示 0
-          final json = r.rawJson;
-          todayConsumed += (r.rawJson['total_cal'] ?? r.rawJson['total_calories'] ?? 0).toDouble();
+          todayCal += r.totalCal;
+          todayP += r.protein;
+          todayC += r.carbs;
+          todayF += r.fat;
         }
       }
 
-      if (dates.isEmpty) {
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildDailyProgress(todayConsumed, _tdee),
-            const SizedBox(height: 100),
-            const Center(child: Text("目前沒有任何飲食紀錄", style: TextStyle(color: Colors.grey))),
-          ],
+      if (allRecords.isEmpty) {
+        return const Center(
+          child: Text("暫無歷史紀錄", style: TextStyle(color: Colors.grey))
         );
       }
 
-      
-
       return ListView.builder(
         padding: const EdgeInsets.all(16),
+        // 總數為「日期分組數」+ 1 (頂部的進度條)
         itemCount: dates.length + 1,
         itemBuilder: (context, index) {
+          // 頂部進度條
           if (index == 0) {
-            return _buildDailyProgress(todayConsumed, _tdee);
+            if (_tdee <= 0) return const SizedBox.shrink();
+            return _buildDailyProgress(
+              todayCal, _targetCalories, 
+              todayP, _targetProtein, 
+              todayC, _targetCarbs, 
+              todayF, _targetFat
+            );
           }
 
+          // 日期清單索引 (需減 1 因為第 0 項是進度條)
           final dateIndex = index - 1;
-          if (dateIndex >= dates.length) return const SizedBox.shrink();
-
           String date = dates[dateIndex];
           List<FoodRecord> dayMeals = groupedRecords[date] ?? [];
 
@@ -281,28 +351,26 @@ Map<String, List<FoodRecord>> _groupRecordsByDate(List<FoodRecord> records) {
             children: [
               // 日期標題
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: Colors.teal,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      date == _getTodayDate() ? "今天 ($date)" : date,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
-                    ),
-                  ],
+                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                child: Text(
+                  date == todayStr ? "今天 ($date)" : date, 
+                  style: const TextStyle(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.bold, 
+                    color: Colors.teal
+                  )
                 ),
               ),
-              // 該日期的餐點清單
-              ...dayMeals.map((record) => _buildMealCard(record)).toList(),
-              const SizedBox(height: 16),
+              
+              // ⭐ 優化點 2：該日期的餐點清單
+              // 使用 asMap().entries 來傳入正確的 index
+              ...dayMeals.asMap().entries.map((entry) {
+                final mealIndex = entry.key;
+                final record = entry.value;
+                return _buildMealCard(record, mealIndex);
+              }).toList(),
+              
+              const SizedBox(height: 20),
             ],
           );
         },
@@ -311,39 +379,68 @@ Map<String, List<FoodRecord>> _groupRecordsByDate(List<FoodRecord> records) {
   );
 }
 
-Widget _buildDailyProgress(double consumed, double target) {
-  double percent = target > 0 ? (consumed / target) : 0;
-  Color progressColor = percent > 1.0 ? Colors.red : Colors.teal;
+double _parseNum(dynamic value) {
+  if (value == null) return 0;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? 0;
+}
 
+Widget _buildDailyProgress(
+  double consumedCal, double targetCal,
+  double consumedP, double targetP,
+  double consumedC, double targetC,
+  double consumedF, double targetF
+) {
   return Card(
-    color: Colors.white,
-    margin: const EdgeInsets.only(bottom: 20),
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
     child: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // 總熱量大進度條
+          _buildNutrientProgress("今日熱量 (kcal)", consumedCal, targetCal, Colors.teal, true),
+          const Divider(height: 32),
+          // 三大營養素小進度條
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("今日熱量進度", style: TextStyle(fontWeight: FontWeight.bold)),
-              Text("${consumed.toStringAsFixed(0)} / ${target.toStringAsFixed(0)} kcal"),
+              Expanded(child: _buildNutrientProgress("蛋白質", consumedP, targetP, Colors.blue, false)),
+              const SizedBox(width: 10),
+              Expanded(child: _buildNutrientProgress("碳水", consumedC, targetC, Colors.green, false)),
+              const SizedBox(width: 10),
+              Expanded(child: _buildNutrientProgress("脂肪", consumedF, targetF, Colors.orange, false)),
             ],
           ),
-          const SizedBox(height: 10),
-          LinearProgressIndicator(
-            value: percent > 1.0 ? 1.0 : percent,
-            backgroundColor: Colors.grey.shade200,
-            color: progressColor,
-            minHeight: 10,
-          ),
-          if (percent > 1.0) 
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text("⚠️ 已超過今日目標！", style: TextStyle(color: Colors.red, fontSize: 12)),
-            )
         ],
       ),
     ),
+  );
+}
+
+Widget _buildNutrientProgress(String label, double current, double target, Color color, bool isLarge) {
+  double percent = target > 0 ? (current / target) : 0;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: isLarge ? 16 : 12, fontWeight: FontWeight.bold)),
+          Text("${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}${isLarge ? '' : 'g'}", 
+               style: TextStyle(fontSize: isLarge ? 14 : 10)),
+        ],
+      ),
+      const SizedBox(height: 6),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: LinearProgressIndicator(
+          value: percent > 1.0 ? 1.0 : percent,
+          minHeight: isLarge ? 12 : 6,
+          backgroundColor: color.withOpacity(0.1),
+          color: percent > 1.0 ? Colors.redAccent : color,
+        ),
+      ),
+    ],
   );
 }
 
@@ -379,17 +476,66 @@ Widget _buildProfileTab() {
           ],
           onChanged: (v) => setState(() => _activityLevel = v!),
         ),
+        const Text("健身目標"),
+        DropdownButton<String>(
+          value: _goal,
+          isExpanded: true,
+          items: const [
+            DropdownMenuItem(value: 'lose', child: Text("減脂 (減少熱量攝取)")),
+            DropdownMenuItem(value: 'maintain', child: Text("維持體重")),
+            DropdownMenuItem(value: 'gain', child: Text("增肌 (增加熱量攝取)")),
+          ],
+          onChanged: (v) => setState(() {
+            _goal = v!;
+            _calculateNutrientGoals();
+          }),
+        ),
         const SizedBox(height: 30),
-        ElevatedButton(onPressed: _saveProfile, child: const Text("儲存並計算 TDEE")),
+        ElevatedButton(
+          onPressed: _saveProfile, 
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+          child: const Text("儲存並計算營養目標")
+        ),
         if (_tdee > 0) ...[
           const SizedBox(height: 30),
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.teal.shade50, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: Colors.teal.shade50, 
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.teal.shade200)
+            ),
             child: Column(
               children: [
-                const Text("您的每日總熱量消耗 (TDEE)"),
-                Text("${_tdee.toStringAsFixed(0)} kcal", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.teal)),
+                const Text("每日總熱量消耗 (TDEE)", style: TextStyle(color: Colors.teal, fontWeight: FontWeight.w500)),
+                Text("${_tdee.toStringAsFixed(0)} kcal", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Divider(),
+                ),
+                
+                // 根據目標顯示最終建議攝取量
+                Text(
+                  _goal == 'lose' ? "🔥 減脂目標攝取" : 
+                  _goal == 'gain' ? "💪 增肌目標攝取" : "⚖️ 維持體重攝取",
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange)
+                ),
+                Text(
+                  "${_targetCalories.toStringAsFixed(0)} kcal", 
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.deepOrange)
+                ),
+                
+                const SizedBox(height: 12),
+                // 顯示三大營養素建議量
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildSimpleNutrientTag("蛋白質", "${_targetProtein.toStringAsFixed(0)}g"),
+                    _buildSimpleNutrientTag("碳水", "${_targetCarbs.toStringAsFixed(0)}g"),
+                    _buildSimpleNutrientTag("脂肪", "${_targetFat.toStringAsFixed(0)}g"),
+                  ],
+                )
               ],
             ),
           ),
@@ -406,65 +552,148 @@ String _getTodayDate() {
 }
 
 // 輔助：單個餐點卡片 (移除了跳轉邏輯，保持在當前頁面查看)
-Widget _buildMealCard(FoodRecord record) {
-  final json = record.rawJson;
-  final timeStr = "${record.dateTime.hour.toString().padLeft(2, '0')}:${record.dateTime.minute.toString().padLeft(2, '0')}";
-
-  // 核心修正：加入多種可能的 Key 讀取邏輯
-  // 優先讀取總計欄位，如果沒有則顯示 0
-  final cal = json['total_cal'] ?? json['total_calories'] ?? 0;
-  final protein = json['total_protein'] ?? json['total_protein_g'] ?? 0;
-  final carbs = json['total_carbs'] ?? json['total_carbs_g'] ?? 0;
-  final fat = json['total_fat'] ?? json['total_fat_g'] ?? 0;
-
-  return Card(
-    margin: const EdgeInsets.only(bottom: 10),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: ExpansionTile(
-      leading: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        ],
-      ),
-      title: Text(record.dishName, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text("$cal kcal"), // 顯示總卡路里
-      trailing: IconButton(
-        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
-        onPressed: () => record.delete(),
-      ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // 這裡會正確顯示數值了
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNutrientInfo('蛋白質', '$protein', 'g', Colors.blue),
-                  _buildNutrientInfo('碳水', '$carbs', 'g', Colors.green),
-                  _buildNutrientInfo('脂肪', '$fat', 'g', Colors.orange),
-                ],
-              ),
-              const Divider(height: 24),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text("食材組成：", style: TextStyle(fontSize: 12, color: Colors.grey)),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: (json['foods'] as List? ?? []).map((f) => Chip(
-                  visualDensity: VisualDensity.compact,
-                  label: Text(f['name'] ?? '', style: const TextStyle(fontSize: 11)),
-                  backgroundColor: Colors.teal.withOpacity(0.05),
-                )).toList(),
-              )
-            ],
+Widget _buildMealCard(FoodRecord record, int index) {
+  return Dismissible(
+    // 使用 HiveObject 的 key 作為唯一辨識，比 dateTime 更安全
+    key: Key(record.key.toString()), 
+    direction: DismissDirection.endToStart,
+    // --- 刪除時的背景 (紅色 + 垃圾桶) ---
+    background: Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      color: Colors.redAccent,
+      child: const Icon(Icons.delete_forever, color: Colors.white, size: 28),
+    ),
+    // --- 確認刪除邏輯 ---
+    confirmDismiss: (direction) async {
+      // 可以在這裡加入確認彈窗，防止誤刪
+      return await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("刪除紀錄"),
+          content: Text("確定要刪除「${record.dishName}」嗎？"),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("取消")),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("刪除", style: TextStyle(color: Colors.red))),
+          ],
+        ),
+      );
+    },
+    onDismissed: (direction) async {
+      // ⭐ 重要修正：使用 record.delete() 而非 deleteAt(index)
+      // 因為 FoodRecord 繼承了 HiveObject，它知道自己在 Box 裡的哪個位置
+      await record.delete(); 
+      
+      setState(() {}); // 重新整理清單
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("${record.dishName} 已刪除"),
+            behavior: SnackBarBehavior.floating,
           ),
-        )
+        );
+      }
+    },
+    child: Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        onTap: () => _showEditDialog(record, index),
+        leading: Container(
+          width: 55,
+          height: 55,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: Colors.blueGrey[50],
+          ),
+          child: (record.imageUrl != null && record.imageUrl!.isNotEmpty)
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    record.imageUrl!,
+                    fit: BoxFit.cover,
+                    // 增加載入中的佔位圖案
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                    },
+                    errorBuilder: (context, error, stackTrace) => 
+                        const Icon(Icons.broken_image, color: Colors.grey),
+                  ),
+                )
+              : const Icon(Icons.restaurant, color: Colors.blueGrey, size: 30),
+        ),
+        title: Text(
+          record.dishName, 
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            "🔥卡路里: ${record.totalCal.toStringAsFixed(1)} kcal\n"
+            "🥩蛋白質: ${record.protein}g | 🍞碳水化合物: ${record.carbs}g | 🥑脂肪: ${record.fat}g",
+            style: TextStyle(color: Colors.blueGrey[600], height: 1.4),
+          ),
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.edit_note, color: Colors.blueAccent),
+            const SizedBox(height: 4),
+            Text(
+              "${record.dateTime.hour}:${record.dateTime.minute.toString().padLeft(2, '0')}",
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+void _showEditDialog(FoodRecord record, int index) {
+  final nameController = TextEditingController(text: record.dishName);
+  final calController = TextEditingController(text: record.totalCal.toString());
+  final proteinController = TextEditingController(text: record.protein.toString());
+  final carbsController = TextEditingController(text: record.carbs.toString());
+  final fatController = TextEditingController(text: record.fat.toString());
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text("修改紀錄"),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: "食物名稱")),
+            TextField(controller: calController, decoration: const InputDecoration(labelText: "卡路里"), keyboardType: TextInputType.number),
+            TextField(controller: proteinController, decoration: const InputDecoration(labelText: "蛋白質 (g)"), keyboardType: TextInputType.number),
+            TextField(controller: carbsController, decoration: const InputDecoration(labelText: "碳水 (g)"), keyboardType: TextInputType.number),
+            TextField(controller: fatController, decoration: const InputDecoration(labelText: "脂肪 (g)"), keyboardType: TextInputType.number),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("取消")),
+        ElevatedButton(
+          onPressed: () async {
+            // 更新物件屬性
+            record.dishName = nameController.text;
+            record.totalCal = double.tryParse(calController.text) ?? 0.0;
+            record.protein = double.tryParse(proteinController.text) ?? 0.0;
+            record.carbs = double.tryParse(carbsController.text) ?? 0.0;
+            record.fat = double.tryParse(fatController.text) ?? 0.0;
+            
+            await record.save(); // HiveObject 的 save() 方法會自動更新 Box
+            setState(() {}); 
+            Navigator.pop(context);
+          },
+          child: const Text("儲存修改"),
+        ),
       ],
     ),
   );
@@ -489,85 +718,171 @@ Widget _buildNutrientInfo(String label, String value, String unit, Color color) 
 }
 
 Widget _buildScannerTab() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_imageData != null || _image != null) ...[
-                GestureDetector(
-                  onTap: () => _showFullImage(context), // 點擊放大
-                  child: Container(
-                    height: 350, // 增加高度
-                    decoration: BoxDecoration(
-                      color: Colors.black12,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      // 改用 contain 確保圖片不被裁切
-                      child: kIsWeb 
-                        ? Image.memory(_imageData!, fit: BoxFit.contain)
-                        : Image.file(_image!, fit: BoxFit.contain),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('💡 點擊圖片可查看全圖', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 20),
-              ],
-
-              ElevatedButton.icon(
-                onPressed: _loading ? null : _pickImageFromGallery,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('從相簿選擇圖片'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+  return SingleChildScrollView(
+    physics: const BouncingScrollPhysics(),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. 圖片預覽區域
+        if (_imageData != null || _image != null) ...[
+          GestureDetector(
+            onTap: () => _showFullImage(context),
+            child: Container(
+              height: 300,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(16),
               ),
-
-              if (_loading) ...[
-                const SizedBox(height: 20),
-                const Center(child: CircularProgressIndicator()),
-              ],
-
-              if (_result != null) ...[
-                const SizedBox(height: 24),
-                Card(
-                  elevation: 3,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${_result!['dish_name'] ?? '-'}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-                        const Divider(height: 20, thickness: 1),
-                        _buildIngredientSection(),
-                        if ((_result!['foods'] as List<dynamic>?)?.isNotEmpty ?? false) const Divider(height: 20, thickness: 1),
-                        _buildResultRow('總卡路里', '${_result!['total_calories'] ?? _result!['total_cal'] ?? '-'} kcal'),
-                        _buildResultRow('總蛋白質', '${_result!['total_protein_g'] ?? _result!['total_protein'] ?? '-'} g'),
-                        _buildResultRow('總碳水化合物', '${_result!['total_carbs_g'] ?? _result!['total_carbs'] ?? '-'} g'),
-                        _buildResultRow('總脂肪', '${_result!['total_fat_g'] ?? _result!['total_fat'] ?? '-'} g'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 20),
-              const Text(
-                'By Joe\n\n',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 14, fontStyle: FontStyle.italic),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: kIsWeb
+                    ? Image.memory(_imageData!, fit: BoxFit.contain)
+                    : Image.file(_image!, fit: BoxFit.contain),
               ),
-            ],
+            ),
           ),
-    );
-  }
+          const SizedBox(height: 8),
+          const Text('💡 點擊圖片可查看全圖',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 20),
+        ],
+
+        // 2. 功能按鈕組 (多管道輸入)
+        const Text("新增飲食紀錄",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        
+        // 第一列：相機與相簿
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.camera_alt_outlined,
+                label: "拍照辨識",
+                color: Colors.teal,
+                onPressed: _loading ? null : _takePhoto, // 需實作 _takePhoto
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.photo_library_outlined,
+                label: "相簿選擇",
+                color: Colors.blue,
+                onPressed: _loading ? null : _pickImageFromGallery,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        
+        // 第二列：雲端與手動
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.manage_search, // 修正圖示名稱
+                label: "雲端紀錄庫", 
+                color: Colors.orange,
+                onPressed: _loading ? null : _showCloudFoodPicker,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.border_color_outlined, // 手寫感圖示
+                label: "自行輸入", 
+                color: Colors.purple,
+                onPressed: _loading ? null : _showManualAddDialog,
+              ),
+            ),
+          ],
+        ),
+
+        // 3. Loading 狀態
+        if (_loading) ...[
+          const SizedBox(height: 30),
+          const Center(child: CircularProgressIndicator()),
+          const SizedBox(height: 10),
+          const Text("AI 正在分析中...", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+        ],
+
+        // 4. AI 辨識結果卡片
+        if (_result != null && !_loading) ...[
+          const SizedBox(height: 24),
+          Card(
+            elevation: 3,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text('${_result!['dish_name'] ?? '-'}',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                      ),
+                      const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                    ],
+                  ),
+                  const Divider(height: 20, thickness: 1),
+                  _buildIngredientSection(),
+                  if ((_result!['foods'] as List<dynamic>?)?.isNotEmpty ?? false)
+                    const Divider(height: 20, thickness: 1),
+                  _buildResultRow('總卡路里', '${_result!['total_calories'] ?? _result!['total_cal'] ?? '-'} kcal'),
+                  _buildResultRow('總蛋白質', '${_result!['total_protein_g'] ?? _result!['total_protein'] ?? '-'} g'),
+                  _buildResultRow('總碳水化合物', '${_result!['total_carbs_g'] ?? _result!['total_carbs'] ?? '-'} g'),
+                  _buildResultRow('總脂肪', '${_result!['total_fat_g'] ?? _result!['total_fat'] ?? '-'} g'),
+                ],
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 40),
+        const Text(
+          'Powered by Gemini AI\nBy Joe',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
+        ),
+      ],
+    ),
+  );
+}
+
+// 輔助組件：抽取重複的按鈕樣式
+Widget _buildActionButton({
+  required IconData icon,
+  required String label,
+  required Color color,
+  required VoidCallback? onPressed,
+}) {
+  return ElevatedButton(
+    onPressed: onPressed,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.white,
+      foregroundColor: color,
+      elevation: 2,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color.withOpacity(0.5)),
+      ),
+    ),
+    child: Column(
+      children: [
+        Icon(icon, size: 28),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+      ],
+    ),
+  );
+}
 
   void _showFullImage(BuildContext context) {
   showDialog(
@@ -596,6 +911,467 @@ Widget _buildScannerTab() {
       ),
     ),
   );
+}
+
+// 修改參數：將 FoodRecord 設為可選 (nullable)，增加 isNew 標記
+Future<void> _updateRecordWithAI(FoodRecord? record, String description, {bool isNew = false}) async {
+  setState(() => _loading = true);
+
+  try {
+    // 1. 呼叫 Gemini 文字重新分析 (不管是更新還是手動新增，都用這支 API)
+    final newData = await _gemini.reanalyzeFoodByText(description);
+
+    if (isNew) {
+      // --- 模式 A：手動新增 (isNew == true) ---
+      final newRecord = FoodRecord(
+        dishName: newData['dish_name'] ?? description,
+        totalCal: _parseNum(newData['total_cal'] ?? newData['total_calories']),
+        dateTime: DateTime.now(),
+        rawJson: newData,
+        protein: _parseNum(newData['total_protein'] ?? newData['total_protein_g'] ?? newData['protein'] ?? 0),
+        carbs: _parseNum(newData['total_carbs'] ?? newData['total_carbs_g'] ?? newData['carbs'] ?? 0),
+        fat: _parseNum(newData['total_fat'] ?? newData['total_fat_g'] ?? newData['fat'] ?? 0),
+        imageUrl: null,
+      );
+
+      // 儲存到 Hive
+      final box = Hive.box<FoodRecord>('food_history');
+      await box.add(newRecord);
+      
+      // (選配) 同步到 Firebase Firestore
+      // await _syncToCloud(newRecord); 
+
+      setState(() {
+        _result = newData; // 在辨識頁面顯示結果
+      });
+      
+    } else if (record != null) {
+      // --- 模式 B：修正舊紀錄 (原本的長按邏輯) ---
+      setState(() {
+        record.dishName = newData['dish_name'] ?? description;
+        record.totalCal = _parseNum(newData['total_cal'] ?? newData['total_calories']);
+        record.rawJson = newData;
+      });
+      await record.save(); // HiveObject 內建的儲存方法
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(isNew ? '✅ 已新增紀錄' : '✅ 營養成分已更新')),
+    );
+  } catch (e) {
+    debugPrint('AI Update error: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('❌ AI 分析失敗，請檢查網路')),
+    );
+  } finally {
+    setState(() => _loading = false);
+  }
+}
+
+Widget _buildSimpleNutrientTag(String label, String value) {
+  return Column(
+    children: [
+      Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+    ],
+  );
+}
+
+Future<void> _syncToCloud(FoodRecord record) async {
+  try {
+    // 取得當前 Firebase 登入的使用者
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint("使用者未登入，跳過雲端同步");
+      return;
+    }
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('food_history')
+        .add({
+          'dish_name': record.dishName,
+          'total_cal': record.totalCal,
+          'date_time': record.dateTime.toIso8601String(),
+          'raw_json': record.rawJson,
+        });
+    debugPrint("雲端同步成功");
+  } catch (e) {
+    debugPrint("Cloud Sync Error: $e");
+  }
+}
+
+void _showCloudGallery() {
+  showModalBottomSheet(
+    context: context,
+    builder: (context) => StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('cloud_photos').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const CircularProgressIndicator();
+        return GridView.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            String imageUrl = snapshot.data!.docs[index]['url'];
+            return GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                _analyzeImageFromUrl(imageUrl); // 透過 URL 辨識
+              },
+              child: Image.network(imageUrl, fit: BoxFit.cover),
+            );
+          },
+        );
+      },
+    ),
+  );
+}
+
+Future<void> _takePhoto() async {
+  try {
+    final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+    if (photo == null) return;
+
+    final bytes = await photo.readAsBytes();
+    setState(() {
+      _imageData = bytes;
+      _image = kIsWeb ? null : File(photo.path);
+    });
+    await _analyzeImageFromBytes(bytes); // 複用你現有的分析邏輯
+  } catch (e) {
+    debugPrint('Camera error: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('啟動相機失敗')),
+    );
+  }
+}
+
+Future<void> _analyzeImageFromUrl(String url) async {
+  setState(() => _loading = true);
+  try {
+    // 1. 將網路圖片轉為 Bytes
+    final response = await HttpClient().getUrl(Uri.parse(url));
+    final HttpClientRequest request = await response;
+    final HttpClientResponse responseData = await request.close();
+    final bytes = await consolidateHttpClientResponseBytes(responseData);
+
+    setState(() {
+      _imageData = bytes;
+      _image = null; // 雲端圖片不佔用本地 File
+    });
+
+    // 2. 呼叫你現有的分析方法
+    await _analyzeImageFromBytes(bytes);
+    
+  } catch (e) {
+    debugPrint('Cloud image analysis error: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('分析雲端圖片失敗')),
+    );
+  } finally {
+    setState(() => _loading = false);
+  }
+}
+
+// 請確保在檔案最上方有：import 'dart:convert';
+
+void _showManualAddDialog() {
+  final nameController = TextEditingController();
+  final calController = TextEditingController();
+  final proteinController = TextEditingController();
+  final carbsController = TextEditingController();
+  final fatController = TextEditingController();
+
+  manualImageData = null;
+
+  showDialog(
+    context: context,
+    barrierDismissible: false, 
+    builder: (dialogContext) => StatefulBuilder( // 改名為 dialogContext 以區分
+      builder: (context, setDialogState) {
+        double screenWidth = MediaQuery.of(context).size.width;
+
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+          title: const Text("手動新增飲食紀錄", style: TextStyle(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: screenWidth * 0.9,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // --- 照片預覽區 (修正：限制高度與縮放方式) ---
+                  GestureDetector(
+                    onTap: () async {
+                      final XFile? pickedFile = await _picker.pickImage(
+                        source: ImageSource.gallery,
+                        imageQuality: 50, // 降低品質減少 Base64 長度，避免 Cloud DB 爆炸
+                      );
+                      
+                      if (pickedFile != null) {
+                        final Uint8List bytes = await pickedFile.readAsBytes();
+                        setDialogState(() {
+                          manualImageData = bytes; 
+                        });
+                      }
+                    },
+                    child: Container(
+                      height: 300, // 固定的預覽高度
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(16),
+                        // ⭐ 加大邊框：粗細為 4.0
+                        border: Border.all(
+                          color: Colors.teal.shade300, 
+                          width: 4.0, // 邊框粗細
+                        ),
+                      ),
+                      child: manualImageData != null 
+                      
+                      ? Padding(
+                          padding: const EdgeInsets.all(4.0), // ⭐ 內縮數值必須與邊框粗細 (width) 一致
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16), // 內層圓角需稍小，看起來才自然
+                            child: Image.memory(
+                              manualImageData!, 
+                              fit: BoxFit.contain, // ⭐ 使用 cover 讓圖片完美填滿內圈且不變形
+                            ),
+                          ),
+                        ) 
+                      : const Center(child: Text("點擊加入照片", style: TextStyle(color: Colors.grey))),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: "食物名稱", border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: calController,
+                    decoration: const InputDecoration(labelText: "總卡路里 (kcal)", border: OutlineInputBorder()),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  const Align(alignment: Alignment.centerLeft, child: Text("詳細營養素 (g)", style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold))),
+                  const Divider(),
+
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: proteinController, decoration: const InputDecoration(labelText: "蛋白質"), keyboardType: TextInputType.number)),
+                      const SizedBox(width: 8),
+                      Expanded(child: TextField(controller: carbsController, decoration: const InputDecoration(labelText: "碳水"), keyboardType: TextInputType.number)),
+                      const SizedBox(width: 8),
+                      Expanded(child: TextField(controller: fatController, decoration: const InputDecoration(labelText: "脂肪"), keyboardType: TextInputType.number)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext), // 關鍵：使用正確的 context 關閉
+              child: const Text("取消"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+              onPressed: () async {
+                if (nameController.text.isEmpty) return;
+                final navigator = Navigator.of(context, rootNavigator: true);
+
+                // 準備數據
+                final String? base64Image = manualImageData != null 
+                    ? 'data:image/jpeg;base64,${base64Encode(manualImageData!)}' 
+                    : null;
+
+                final Map<String, dynamic> manualData = {
+                  'dish_name': nameController.text,
+                  'total_calories': double.tryParse(calController.text) ?? 0.0,
+                  'total_protein_g': double.tryParse(proteinController.text) ?? 0.0,
+                  'total_carbs_g': double.tryParse(carbsController.text) ?? 0.0,
+                  'total_fat_g': double.tryParse(fatController.text) ?? 0.0,
+                  'source': 'manual_input',
+                };
+
+                final newRecord = FoodRecord(
+                  dishName: nameController.text,
+                  totalCal: (manualData['total_calories'] as num).toDouble(),
+                  dateTime: DateTime.now(),
+                  rawJson: manualData,
+                  protein: _parseNum(manualData['total_protein_g'] ?? 0),
+                  carbs: _parseNum(manualData['total_carbs_g'] ?? 0),
+                  fat: _parseNum(manualData['total_fat_g'] ?? 0),
+                  imageUrl: base64Image,
+                );
+
+                try {
+                  // 2. 儲存到 Hive
+                  debugPrint("正在儲存到 Hive...");
+                  await Hive.box<FoodRecord>('food_history').add(newRecord);
+                  debugPrint("✅ Hive 儲存成功");
+
+                  // 3. 儲存到雲端 (最容易卡住的地方)
+                  debugPrint("正在儲存到雲端 (Firestore)...");
+                  // 設定超時或 catch 錯誤，防止這裡卡死導致無法 pop
+                  await _uploadToPublicCloud(newRecord, base64Image).timeout(
+                    const Duration(seconds: 5), 
+                    onTimeout: () => debugPrint("⚠️ 雲端儲存超時，繼續執行關閉動作"),
+                  );
+                  debugPrint("✅ 雲端同步完成");
+
+                } catch (e) {
+                  // 如果雲端報錯，會跳到這裡
+                  debugPrint("❌ 儲存過程發生錯誤: $e");
+                  // 你可以在這裡決定是否要讓使用者知道錯誤，或是照樣關閉視窗
+                }
+
+                // 4. 更新 UI 與關閉視窗
+                if (!mounted) {
+                  debugPrint("⚠️ 元件已銷毀 (Not Mounted)，無法執行 pop");
+                  return;
+              }
+        
+                 setState(() { 
+                  _result = manualData; 
+                  debugPrint("UI 已更新 (_result)");
+                });
+
+                debugPrint("正在執行 navigator.pop()...");
+                navigator.pop(); 
+                debugPrint("🚀 彈窗應已關閉");
+                              
+              },
+              child: const Text("儲存並關閉"),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+String _searchQuery = ""; // 定義在 _HomeScreenState 中
+
+void _showCloudFoodPicker() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (context) => StatefulBuilder( // 讓搜尋列可以即時更新
+      builder: (context, setModalState) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            // --- 搜尋列 ---
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: "搜尋雲端食物紀錄...",
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+                onChanged: (val) {
+                  setModalState(() => _searchQuery = val.toLowerCase());
+                },
+              ),
+            ),
+            
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('public_foods').snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  
+                  // 在本地端做簡單過濾（Firestore 的複合查詢較複雜，初期建議先這樣做）
+                  final docs = snapshot.data!.docs.where((doc) {
+                    final name = (doc['dish_name'] as String).toLowerCase();
+                    return name.contains(_searchQuery);
+                  }).toList();
+
+                  return ListView.builder(
+                    controller: scrollController,
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final data = docs[index].data() as Map<String, dynamic>;
+                      return ListTile(
+                        leading: Container(
+                          width: 50, height: 50,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+
+                            color: Colors.grey[300],
+                          ),
+                          child: const Icon(Icons.fastfood, color: Colors.white),
+                        ),
+                        title: Text(data['dish_name']),
+                        subtitle: Text("${data['total_cal']} kcal"),
+                        onTap: () {
+
+                          // ⭐ 關鍵：檢查所有可能的鍵名 (Key names)
+                          // 有些資料可能存在 'total_protein'，有些可能在 'protein'
+                          double p = _parseNum(data['total_protein'] ?? data['protein'] ?? data['total_protein_g'] ?? 0);
+                          double c = _parseNum(data['total_carbs'] ?? data['carbs'] ?? data['total_carbs_g'] ?? 0);
+                          double f = _parseNum(data['total_fat'] ?? data['fat'] ?? data['total_fat_g'] ?? 0);
+                          double cal = _parseNum(data['total_cal'] ?? data['total_calories'] ?? 0);
+
+                          // 建立新的本地紀錄
+                          final newRecord = FoodRecord(
+                            dishName: data['dish_name'] ?? '未命名食物',
+                            totalCal: cal,
+                            dateTime: DateTime.now(),
+                            rawJson: data, // 保留原始資料
+                            protein: p,
+                            carbs: c,
+                            fat: f,
+                            imageUrl: data['image_url'], // 抓取雲端圖片網址
+                          );
+
+                          // 儲存到本地 Hive
+                          Hive.box<FoodRecord>('food_history').add(newRecord);
+
+                          setState(() {
+                            _result = data;
+                          });
+
+                          Navigator.pop(context); // 關閉 Picker
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _uploadToPublicCloud(FoodRecord record, String? imageUrl) async {
+  try {
+    await FirebaseFirestore.instance.collection('public_foods').add({
+      'dish_name': record.dishName,
+      'total_cal': record.totalCal,
+      // ⭐ 確保這裡使用的 Key 與你 FoodRecord 解析時一致
+      'total_protein': record.protein, 
+      'total_carbs': record.carbs,
+      'total_fat': record.fat,
+      'image_url': imageUrl, 
+      'created_at': FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    debugPrint("上傳公有雲失敗: $e");
+  }
 }
 
   @override
