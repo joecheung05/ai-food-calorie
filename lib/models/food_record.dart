@@ -29,6 +29,9 @@ class FoodRecord extends HiveObject {
   @HiveField(7)
   String? imageUrl; // 儲存 Firebase Storage 的圖片網址
 
+  @HiveField(8)
+  double quantity;
+
   FoodRecord({
     required this.dishName,
     required this.totalCal,
@@ -38,5 +41,6 @@ class FoodRecord extends HiveObject {
     this.fat = 0.0,
     this.carbs = 0.0,
     this.imageUrl,
+    this.quantity = 1.0,
   });
 }
